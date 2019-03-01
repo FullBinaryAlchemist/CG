@@ -7,9 +7,35 @@
 #define o 8
 #define dt 2
 #define n 4
-int acc[n],m[n],q[n];
+#define tc 8000
+//tc is time constant for the delay
 
+int acc[n]={0},m[n],q[n], mc[n];
+int reg[2*n+1]={0};//main register to store the content of acc q q-1
 //dt-->digit thickness
+
+//shift reg right
+void rightshift()
+{
+  int i,j,k;
+  //copying acc q into reg
+  for(i=0;i<n;i++)
+	reg[i]=acc[i];
+  for(j=0;j<n;i++,j++)
+	reg[i]=q[j];
+
+   //right shifting
+  for(i=2*n;i>0;i--)
+  {
+	reg[i]=reg[i-1];
+  }
+  //copying back acc q from reg
+  for(i=0;i<n;i++)
+	acc[i]=reg[i];
+  for(j=0;j<n;i++,j++)
+	q[j]=reg[i];
+
+}
 
 void makeBlock(int x,int y)
 {
@@ -32,7 +58,7 @@ void drawDig0(int x,int y)
 {
 	int i=0;
 	//thickness of 0
-	setcolor(GREEN);
+       //	setcolor(GREEN);
 	for(;i<dt;i++)
 	{
 		x+=i;
@@ -44,13 +70,13 @@ void drawDig0(int x,int y)
 void drawDig1(int x,int y)
 {
 	int i=0;
-	setcolor(GREEN);
+       //	setcolor(GREEN);
 	for(;i<=dt;i++)
 	{
 		x+=i;
 		line(x+w/2-dt/2,y+w/2-l/2-o/2,x+w/2-dt/2,y+w/2+o/2);
 	}
-	setcolor(WHITE);
+     //	setcolor(WHITE);
 }
 
 void makeScreen(int bitlen,int x,int y)
@@ -63,21 +89,30 @@ void makeScreen(int bitlen,int x,int y)
 	makeReg(bitlen,x,y);
 	x+=(bitlen+1)*w;
 
+	//Q-1 reg
+	makeReg(1,x,y);
+	x+=(1+1)*w;
+
 	//M(Multiplicand) reg
 	makeReg(bitlen,x,y);
 	x+=(bitlen+1)*w;
+
 }
 
 
 void initScreen(int A[n],int Q[n],int M[n],int x,int y)
 {
+  //	cleardevice();
 	int i=0;
-	//A[0]=0,A[1]=0,A[2]=0,A[3]=0;
+       //	A[0]=0,A[1]=0,A[2]=0,A[3]=0;
 	//M[0]=0,M[1]=1,M[2]=0,M[3]=1;
 	//Q[0]=1,Q[1]=1,Q[2]=0,Q[3]=1;
-
+	//checking the parameter values
+	cleardevice();
 	makeScreen(n,x,y);
-	for(i=n;i>0;i--)
+
+	//putting content in accumulator
+	for(i=0;i<n;i++)
 	{
 		if(A[i]==0)
 			drawDig0(x,y);
@@ -86,8 +121,10 @@ void initScreen(int A[n],int Q[n],int M[n],int x,int y)
 		x+=w;
 	}
 
-	x+=w;
-	for(i=n;i>0;i--)
+	x+=w;//moving to Q(Multiplier)
+
+	//putting digits in Multiplier
+	for(i=0;i<n;i++)
 	{
 		if(Q[i]==0)
 			drawDig0(x,y);
@@ -96,8 +133,19 @@ void initScreen(int A[n],int Q[n],int M[n],int x,int y)
 		x+=w;
 	}
 
-	x+=w;
-	for(i=n;i>0;i--)
+	x+=w;//moving to Q-1
+	{
+		if( reg[2*n]==0)
+			drawDig0(x,y);
+		else
+			drawDig1(x,y);
+		x+=w;
+	}
+
+	x+=w;//moving to M
+
+	//putting digits in multiplicand
+	for(i=0;i<n;i++)
 	{
 		if(M[i]==0)
 			drawDig0(x,y);
@@ -106,59 +154,23 @@ void initScreen(int A[n],int Q[n],int M[n],int x,int y)
 		x+=w;
 	}
 }
-
-int* twosComp(int* temp)
-{
-	int i=0,c=1;
-	while(1)
+void add(int *temp1, int *temp2)
+{       int i;
+	int c=0;
+	for(i=n-1;i>=0;i--)
 	{
-		if(temp[i]==-1)
-			break;
-		if(temp[i]==0)
+		temp1[i]=temp1[i]+temp2[i]+c;
+		//adjusting for carry
+		if(temp1[i]>1)
 		{
-			temp[i]=1;
+			temp1[i]-=2;
+			c=1;
 		}
 		else
 		{
-			temp[i]=0;
+			c=0;
 		}
-
-		i++;
 	}
-	i=0;
-	while(1)
-	{
-		if(temp[i]==-1 && c==0)
-			break;
-		//if c==1
-		temp[i]=(c+temp[i])%2;
-		c=(c+temp[i])/2;
-		i++;
-	}
-	return temp;
-}
-
-int* convert(int num)
-{
-	int *temp,i=0,sign;
-	temp=(int*)malloc(sizeof(int)*n);
-	sign=(num>=0)?0:1;
-	num=abs(num);
-	while(1)
-	{
-		temp[i]=num%2;
-		num/=2;
-		i++;
-
-		if(num==0)
-			break;
-	}
-	temp[i]=-1;
-	if(sign==1)
-	{
-		temp=twosComp(temp);
-	}
-	return temp;
 }
 void twoComp(int *temp)
 {
@@ -178,7 +190,7 @@ void twoComp(int *temp)
 }
 void convert2(int num, int *temp)
 {
-	int i,sign;
+	int i,sign,t=num;
 	printf("%d converting..",num);
 	printf("%x is add",temp);
        //	temp=(int *)malloc(sizeof(int)*n);
@@ -187,7 +199,7 @@ void convert2(int num, int *temp)
 
 	num=abs(num);
 
-	while(num>=0)
+	while(num>=0 && i>=0)
 	{
 		temp[i]=num%2;
 		printf("%d\t",temp[i]);
@@ -203,7 +215,10 @@ void convert2(int num, int *temp)
 
 	if(sign)
 		twoComp(temp);
-       printf("COnverted\n");
+    //displaying
+    printf("Converted %d:\n",t);
+	for(i=0;i<n;i++)
+		printf("%d\t",temp[i]);
 
 
 }
@@ -219,6 +234,10 @@ void input()
 	clrscr();
      //	printf("%x is add\n",m);
 	convert2(multiplicand,m);
+
+	convert2(multiplicand,mc);//initializes mc with M
+	twoComp(mc);//taking -M in mc
+
 	convert2(multiplier,q);
 
       /*	printf("m:");
@@ -236,22 +255,110 @@ void input()
 	for(i=0;i<n;i++)
 		printf("%d",q[i]);
 }
+char cmpmsg[]="Comparing Q0Q-1....";
+char nmsg[]="";
+char negq[]="Q0Q-1 10...";
+char posq[]="Q0Q-1 01...";
+char addm[]="Adding M to A";
+char subm[]="Adding -M to A";
 
-void main()
+void booths(int x,int y)
+{
+	int i,j;
+
+	initScreen(acc,q,m,x,y);
+	delay(tc);
+	for(i=0;i<n;i++)
+	{       sprintf(nmsg,"N:%d\n",n-i);
+		outtext(cmpmsg);
+		if(q[n-1]!=reg[2*n])
+		{
+			if(q[n-1]>reg[2*n])
+			{
+				gotoxy(0,0);
+
+
+				outtext(negq);
+				delay(1000);
+				outtext(subm);
+				add(acc,mc);
+				delay(tc/4);
+				initScreen(acc,q,m,x,y);
+
+			       /*	printf("-M is :\n");
+				for(j=0;j<n;j++)
+					printf("%d\t",mc[j]);
+
+				printf("A<- A-M\n");
+			       /*	printf("A+(-M):\n");
+				for(j=0;j<n;j++)
+					printf("%d\t",acc[j]);*/
+				delay(tc/2);
+			}
+			else
+			{
+				gotoxy(0,0);
+
+				outtext(posq);
+				delay(1000);
+				outtext(addm);
+				delay(3000);
+				add(acc,m);
+				initScreen(acc,q,m,x,y);
+
+			     /*	printf("-M is :\n");
+				for(j=0;j<n;j++)
+					printf("%d\t",mc[j]);
+
+				printf("\nA<A+M\n");
+			      *	printf("A+(-M):\n");
+				for(j=0;j<n;j++)
+					printf("%d\t",acc[j]);
+				*/
+
+				delay(tc);
+			}
+		}//end of comparing Q0Q-1
+		else
+		{
+			gotoxy(0,0);
+			printf("Q0Q-1 ->00...\n");
+			delay(1000);
+		}
+		printf("Right shifting AQQ-1...\n");
+		delay(tc/4);
+		rightshift();
+		initScreen(acc,q,m,x,y);
+		delay(tc/2);
+
+		printf("DECREMENTING count to:%d...\n",n-i-1);
+		delay(tc/4);
+		initScreen(acc,q,m,x,y);
+	       //	clrscr();
+	}
+	printf("\nFINAL RESULT..\n");
+	delay(tc/2);
+	initScreen(acc,q,m,x,y);
+}
+int main()
 {
 	int gd=DETECT,gm=0;
 	int xi=50,yi=50,xtemp,ytemp,mul,mpr;
-	int i=0;
-	clrscr();
+	int j,i=0;
+ //      clrscr();
+       //	cleardevice();
+	setgraphbufsize(16*1024);
 
 	detectgraph(&gd,&gm);
 	initgraph(&gd,&gm,"C:\\TURBOC3\\BGI");
-	 printf("Enter m and q:");
-	 scanf("%d%d",&mul,&mpr);
-	 printf("\n %x is add..\n",m);
-	 convert2(mul,&m[0]);
-	 convert2(mpr,&q[0]);
-       //	input();
+	setbkcolor(BLACK);
+	cleardevice();
+       //	 printf("Enter m and q:");
+       //	 scanf("%d%d",&mul,&mpr);
+       // printf("\n %x is add..\n",m);
+       //	 convert2(mul,&m[0]);
+       //	 convert2(mpr,&q[0]);
+	input();
 	/*
 	xtemp=xi,ytemp=yi;
 	makeReg(4,xi,yi);
@@ -267,10 +374,27 @@ void main()
 		drawDig1(xtemp+=w,ytemp);
 	} */
 	//makeScreen(8,5,50);
-	/*initScreen(acc,q,m,5,50);
-	initScreen(acc,q,m,5,50+w+o);
-	initScreen(acc,q,m,5,50+2*w+2*o);
-	initScreen(acc,q,m,5,50+3*w+3*o);
-	  */
+	/*
+	for(i=0;i<n;i++)
+	{	initScreen(acc,q,m,5,50+i*w+i*o);
+		rightshift();
+	}*/
+       //	initScreen(acc,q,m,5,50+3*w+3*o);
+ //	cleardevice();
+   booths(5,50);
+	/*
+	add(acc,mc);
+	printf("\n-M is :\n");
+				for(j=0;j<n;j++)
+					printf("%d\t",mc[j]);
+
+	printf("\nA is :\n");
+				for( j=0;j<n;j++)
+					printf("%d\t",acc[j]);
+
+	*/
 	getch();
+
+	closegraph();
+	return 0;
 }
